@@ -20,6 +20,8 @@ public final class GridSnapshot {
     public static final int FLOOR_TORCH_OK = 1 << 4;
     /** The block in this cell emits light that may change by itself or by players (D-21). */
     public static final int VARIABLE_EMITTER = 1 << 5;
+    /** A torch (floor or wall, normal or soul) already stands in this cell. Used for progress, not for light. */
+    public static final int TORCH_BLOCK = 1 << 6;
 
     private final int ox, oy, oz;
     private final int sx, sy, sz;

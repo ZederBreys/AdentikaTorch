@@ -4,6 +4,7 @@ import adentika.torch.TorchAutomationAddon;
 import adentika.torch.core.blocks.Category;
 import adentika.torch.core.blocks.CategoryResolver;
 import adentika.torch.mc.BlockRules;
+import adentika.torch.mc.Msg;
 import meteordevelopment.meteorclient.settings.BlockListSetting;
 import meteordevelopment.meteorclient.settings.BoolSetting;
 import meteordevelopment.meteorclient.settings.Setting;
@@ -87,7 +88,7 @@ public class TorchBlocks extends Module {
 
     @Override
     public void onActivate() {
-        info("This module only holds settings; it does not need to be enabled.");
+        Msg.info("blocks", Msg.t("blocks.settings_only"));
         toggle();
     }
 }

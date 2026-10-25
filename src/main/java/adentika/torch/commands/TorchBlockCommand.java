@@ -6,6 +6,7 @@ import adentika.torch.core.blocks.Category;
 import adentika.torch.core.blocks.CategoryResolver;
 import adentika.torch.core.blocks.Hazard;
 import adentika.torch.mc.BlockRules;
+import adentika.torch.mc.Msg;
 import adentika.torch.mc.TraitsProvider;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import meteordevelopment.meteorclient.commands.Command;
@@ -13,6 +14,8 @@ import net.minecraft.block.BlockState;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.argument.BlockStateArgument;
 import net.minecraft.command.argument.BlockStateArgumentType;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 
@@ -30,7 +33,7 @@ public class TorchBlockCommand extends Command {
         builder.then(literal("info")
             .executes(ctx -> {
                 if (mc.world == null || !(mc.crosshairTarget instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) {
-                    error("Look at a block or pass one: .torchblock info <block>");
+                    Msg.error("blocks", Msg.t("blocks.info.look"));
                     return SINGLE_SUCCESS;
                 }
                 print(mc.world.getBlockState(hit.getBlockPos()));
@@ -47,42 +50,38 @@ public class TorchBlockCommand extends Command {
         BlockTraits t = TraitsProvider.of(state);
         CategoryResolver r = BlockRules.get();
 
-        info("%s", state);
-        info("[game] luminance %d, fluid %s, full collision %s, fire damage %s, falls %s, interactive %s, variable light %s",
-            t.luminance(), t.fluid(), yes(t.fullCollision()), yes(t.fireDamaging()), yes(t.gravityAffected()),
-            yes(t.interactive()), yes(t.variableLight()));
-        info("[game] torch on top: %s, wall torch sides: %s", yes(t.topCenterSolid()), sides(t.sideFullSolidMask()));
+        Msg.info("blocks", Msg.t("blocks.info.header", state.getBlock().getName().copy().formatted(Formatting.WHITE, Formatting.BOLD)));
+
+        boolean anyWall = false;
+        for (int d = Dir.NORTH; d <= Dir.EAST; d++) anyWall |= r.canSupportTorch(t, d);
+        Msg.info("blocks", Msg.t("blocks.info.torch", yes(r.canSupportTorch(t, Dir.UP)), yes(anyWall), yes(r.needsSneak(t))));
+
+        if (t.luminance() > 0) {
+            Msg.info("blocks", Msg.t(r.isStableLight(t) ? "blocks.info.light" : "blocks.info.light_variable", Msg.value(t.luminance())));
+        }
+
+        Hazard h = r.hazard(t);
+        if (!h.isNone()) {
+            Msg.warning("blocks", Msg.t("blocks.info.hazard", yes(h.enterForbidden()), yes(h.standForbidden()),
+                Msg.value(h.pathBuffer()), Msg.value(h.placeBuffer())));
+        }
+        if (r.avoidStepping(t)) Msg.warning("blocks", Msg.t("blocks.info.consequences"));
 
         for (Category c : Category.values()) {
             CategoryResolver.Source source = r.source(c, t);
             boolean excluded = r.userRemoved(c).contains(t.id());
             if (source == CategoryResolver.Source.NONE && !excluded) continue;
-            String who = switch (source) {
-                case GAME -> "game";
-                case MOD_DEFAULT -> "mod";
-                case USER -> "you";
-                case NONE -> "-";
-            };
-            info("[category] %s: %s%s", c, excluded ? "excluded by you" : "yes", excluded ? "" : " (" + who + ")");
+            Text name = Msg.t("category." + c.name().toLowerCase()).formatted(Formatting.WHITE);
+            Text who = excluded ? Msg.t("blocks.info.excluded").formatted(Formatting.RED)
+                : Msg.t("blocks.info.source." + source.name().toLowerCase()).formatted(Formatting.AQUA);
+            Msg.info("blocks", Msg.t("blocks.info.category", name, who));
         }
 
-        Hazard h = r.hazard(t);
-        boolean anyWall = false;
-        for (int d = Dir.NORTH; d <= Dir.EAST; d++) anyWall |= r.canSupportTorch(t, d);
-        info("[result] floor torch support: %s, wall torch support: %s, needs sneak: %s, light counts: %s",
-            yes(r.canSupportTorch(t, Dir.UP)), yes(anyWall), yes(r.needsSneak(t)), yes(r.isStableLight(t)));
-        info("[result] enter forbidden: %s, stand forbidden: %s, path buffer %d, place buffer %d, avoid stepping: %s",
-            yes(h.enterForbidden()), yes(h.standForbidden()), h.pathBuffer(), h.placeBuffer(), yes(r.avoidStepping(t)));
+        Msg.info("blocks", Msg.t("blocks.info.game", Msg.value(t.id()), yes(t.fullCollision()), yes(t.gravityAffected()),
+            yes(t.interactive()), yes(t.fireDamaging())));
     }
 
-    private static String yes(boolean b) {
-        return b ? "yes" : "no";
-    }
-
-    private static String sides(int mask) {
-        StringBuilder sb = new StringBuilder();
-        String[] names = {"down", "up", "north", "south", "west", "east"};
-        for (int d = Dir.NORTH; d <= Dir.EAST; d++) if ((mask & Dir.bit(d)) != 0) sb.append(sb.isEmpty() ? "" : ",").append(names[d]);
-        return sb.isEmpty() ? "none" : sb.toString();
+    private static Text yes(boolean b) {
+        return b ? Msg.good(Msg.s("common.yes")) : Msg.bad(Msg.s("common.no"));
     }
 }

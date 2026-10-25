@@ -118,6 +118,9 @@ public final class WorldScan {
         grid.setEmission(i, state.getLuminance());
         if (state.getLuminance() > 0 && !rules.isStableLight(traits)) grid.set(i, GridSnapshot.VARIABLE_EMITTER);
         if (state.isOpaque() && state.hasSidedTransparency()) grid.setOccludedFaces(i, occludedFaces(state));
+        if (state.isOf(Blocks.TORCH) || state.isOf(Blocks.WALL_TORCH) || state.isOf(Blocks.SOUL_TORCH) || state.isOf(Blocks.SOUL_WALL_TORCH)) {
+            grid.set(i, GridSnapshot.TORCH_BLOCK);
+        }
 
         VoxelShape collision = state.getCollisionShape(world, pos);
         boolean lava = traits.fluid() == BlockTraits.Fluid.LAVA;

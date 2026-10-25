@@ -1,27 +1,25 @@
 package adentika.torch.modules;
 
 import adentika.torch.TorchAutomationAddon;
-import adentika.torch.core.Dir;
 import adentika.torch.core.GridSnapshot;
 import adentika.torch.core.Planner;
 import adentika.torch.core.SpawnModel;
 import adentika.torch.mc.Analysis;
 import adentika.torch.mc.BlockRules;
+import adentika.torch.mc.Msg;
+import adentika.torch.mc.PlanRenderer;
 import adentika.torch.mc.WorldScan;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.BlockUpdateEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
-import meteordevelopment.meteorclient.renderer.ShapeMode;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Module;
-import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -263,7 +261,6 @@ public class TorchHighlight extends Module {
     private int refreshTicks;
     private boolean warnedDimension;
     private Boolean lastCave;
-    private final Color tmp = new Color();
 
     public TorchHighlight() {
         super(TorchAutomationAddon.CATEGORY, "torch-highlight",
@@ -308,7 +305,7 @@ public class TorchHighlight extends Module {
         if (mc.world == null || mc.player == null) return;
 
         if (mc.world.getRegistryKey() != World.OVERWORLD) {
-            if (!warnedDimension) warning("Only the Overworld is supported; highlight is paused here.");
+            if (!warnedDimension) Msg.warning("highlight", Msg.t("highlight.overworld_only"));
             warnedDimension = true;
             reset();
             return;
@@ -321,7 +318,7 @@ public class TorchHighlight extends Module {
                 result = pending.get();
                 if (first) reportSummary(result);
             } catch (Exception e) {
-                error("Analysis failed: %s", e);
+                Msg.error("highlight", Msg.t("common.failed"));
                 TorchAutomationAddon.LOG.error("Torch analysis failed", e);
             }
             pending = null;
@@ -347,7 +344,7 @@ public class TorchHighlight extends Module {
 
     private void startScan(BlockPos p) {
         boolean cave = isCave(p);
-        if (mode.get() == Mode.Auto && lastCave != null && lastCave != cave) info(cave ? "Underground: cave mode." : "On the surface: surface mode.");
+        if (mode.get() == Mode.Auto && lastCave != null && lastCave != cave) Msg.info("highlight", Msg.t(cave ? "highlight.cave" : "highlight.surface"));
         if (lastCave == null || lastCave != cave) result = null;
         lastCave = cave;
         int down = cave ? caveBlocksDown.get() : blocksDown.get();
@@ -377,10 +374,14 @@ public class TorchHighlight extends Module {
             g.sizeX(), g.sizeY(), g.sizeZ(), r.spawnableCells(), r.dangerCells().length, r.torches().size(),
             r.uncovered(), r.unknownCells(), r.millis());
         TorchAutomationAddon.LOG.info("Torch highlight: {}", line);
-        if (chatSummary.get()) {
-            info(line);
-            if (r.spawnableCells() == 0) warning("No spot where monsters could spawn was found in the scanned area.");
+        if (!chatSummary.get()) return;
+        // One line, replaced on the next summary instead of piling up.
+        if (r.dangerCells().length == 0) {
+            Msg.status(Msg.ID_HIGHLIGHT, "highlight", Msg.t("highlight.no_dark"));
+        } else {
+            Msg.status(Msg.ID_HIGHLIGHT, "highlight", Msg.t("highlight.summary", Msg.bad(r.dangerCells().length), Msg.approx(r.torches().size())));
         }
+        if (r.unknownInScope() > 0) Msg.warning("highlight", Msg.t("highlight.partial"));
     }
 
     private static Analysis.Request withGrid(Analysis.Request r, WorldScan s) {
@@ -413,67 +414,21 @@ public class TorchHighlight extends Module {
 
     @Override
     public String getInfoString() {
-        if (scan != null) return String.format("scan %d%%", (int) (scan.progress() * 100));
-        if (result == null) return pending != null ? "analysing" : null;
-        StringBuilder sb = new StringBuilder();
-        if (lastCave != null) sb.append(lastCave ? "cave | " : "surface | ");
-        sb.append("dark ").append(result.dangerCells().length).append(" | torches ").append(result.torches().size());
-        if (result.uncovered() > 0) sb.append(" | uncoverable ").append(result.uncovered());
-        if (result.unknownInScope() > 0) sb.append(" | unknown ").append(result.unknownInScope());
-        return sb.toString();
+        if (scan != null) return Msg.s("common.status.scan", (int) (scan.progress() * 100));
+        if (result == null) return pending != null ? Msg.s("common.status.analysing") : null;
+        String mode = lastCave == null ? "" : Msg.s(lastCave ? "highlight.status.cave" : "highlight.status.surface") + " | ";
+        if (result.dangerCells().length == 0) return mode + Msg.s("highlight.status.clear");
+        return mode + Msg.s("highlight.status.result", result.dangerCells().length, result.torches().size());
     }
 
     @EventHandler
     private void onRender(Render3DEvent event) {
         if (result == null || mc.player == null) return;
-        GridSnapshot g = result.grid();
-
-        if (showChunks.get()) renderChunks(event);
-
+        if (showChunks.get()) PlanRenderer.chunks(event, result, chunkColor.get());
         if (showSpots.get()) {
-            double px = mc.player.getX(), py = mc.player.getY(), pz = mc.player.getZ();
-            double maxSq = (double) spotRadius.get() * spotRadius.get();
-            int drawn = 0;
-            for (int cell : result.dangerCells()) {
-                if (drawn >= maxSpots.get()) break;
-                int x = g.x(cell), y = g.y(cell), z = g.z(cell);
-                double dx = x + 0.5 - px, dy = y - py, dz = z + 0.5 - pz;
-                if (dx * dx + dy * dy + dz * dz > maxSq) continue;
-                event.renderer.sideHorizontal(x + 0.1, y + 0.02, z + 0.1, x + 0.9, z + 0.9, spotColor.get(), spotColor.get(), ShapeMode.Sides);
-                drawn++;
-            }
+            PlanRenderer.spots(event, result, spotColor.get(), mc.player.getX(), mc.player.getY(), mc.player.getZ(),
+                spotRadius.get(), maxSpots.get());
         }
-
-        if (showTorches.get()) {
-            for (Planner.Torch t : result.torches()) renderTorch(event, g, t);
-        }
-    }
-
-    /** Outline per chunk at the average height of its dark spots; more spots -> more opaque line. */
-    private void renderChunks(Render3DEvent event) {
-        SettingColor base = chunkColor.get();
-        for (Map.Entry<Long, Analysis.ChunkInfo> e : result.chunkDanger().entrySet()) {
-            int cx = (int) (e.getKey() & 0xFFFFFFFFL);
-            int cz = (int) (e.getKey() >>> 32);
-            float k = Math.min(1f, e.getValue().count() / 64f);
-            tmp.set(base.r, base.g, base.b, Math.min(255, (int) (80 + 175 * k)));
-            int x = cx << 4, z = cz << 4;
-            double y = Math.floor(e.getValue().averageY()) + 0.05;
-            event.renderer.sideHorizontal(x, y, z, x + 16, z + 16, tmp, tmp, ShapeMode.Lines);
-        }
-    }
-
-    private void renderTorch(Render3DEvent event, GridSnapshot g, Planner.Torch t) {
-        double x = g.x(t.cell()) + 0.5, y = g.y(t.cell()), z = g.z(t.cell()) + 0.5;
-        double ox = 0, oz = 0, oy = 0;
-        if (t.isWall()) {
-            // Wall torch leans against the supporting block in attachDir.
-            ox = t.attachDir() == Dir.WEST ? -0.3 : t.attachDir() == Dir.EAST ? 0.3 : 0;
-            oz = t.attachDir() == Dir.NORTH ? -0.3 : t.attachDir() == Dir.SOUTH ? 0.3 : 0;
-            oy = 0.2;
-        }
-        double h = 0.6;
-        event.renderer.box(x + ox - 0.1, y + oy, z + oz - 0.1, x + ox + 0.1, y + oy + h, z + oz + 0.1,
-            torchColor.get(), torchColor.get(), ShapeMode.Both, 0);
+        if (showTorches.get()) PlanRenderer.torches(event, result, torchColor.get());
     }
 }

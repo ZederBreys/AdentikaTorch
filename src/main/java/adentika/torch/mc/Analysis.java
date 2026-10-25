@@ -42,8 +42,58 @@ public final class Analysis {
         long millis,
         /** spawnable cells in the whole snapshot regardless of light (diagnostics) */
         int spawnableCells,
-        int unknownCells
+        int unknownCells,
+        /** torches already standing inside the scope */
+        int existingTorches
     ) {
+    }
+
+    /**
+     * Selected area (PRODUCT_SPEC §2, mode 2a; M3 preview). The selection itself is the scope; torches are planned only
+     * at positions reachable from a standable cell of the snapshot, so the estimate matches what can be placed later.
+     *
+     * @param previousTorches world x, y, z triples of the last plan for this selection (kept while still useful)
+     */
+    public record AreaRequest(
+        GridSnapshot grid,
+        int minX, int minY, int minZ, int maxX, int maxY, int maxZ,
+        SpawnModel.Profile profile,
+        boolean stableLightOnly,
+        boolean preferWall,
+        int[] previousTorches
+    ) {
+    }
+
+    public static Result runArea(AreaRequest r) {
+        long start = System.nanoTime();
+        GridSnapshot g = r.grid();
+        Scope scope = new Scope(r.minX(), r.minY(), r.minZ(), r.maxX(), r.maxY(), r.maxZ());
+
+        SpawnModel.LightMode mode = r.stableLightOnly() ? SpawnModel.LightMode.STABLE_ONLY : SpawnModel.LightMode.REAL;
+        SpawnModel.Result spawn = SpawnModel.analyze(g, scope, r.profile(), mode);
+
+        boolean[] standFrom = new boolean[g.volume()];
+        for (int i = 0; i < standFrom.length; i++) standFrom[i] = g.has(i, GridSnapshot.STANDABLE);
+
+        Planner.Config cfg = new Planner.Config();
+        cfg.safeLight = r.profile().safeLight;
+        cfg.preferWall = r.preferWall();
+        cfg.requireReachable = true;
+        cfg.keepCells = toCells(g, r.previousTorches());
+        Planner.Plan plan = Planner.plan(g, spawn.dangerCells(), standFrom, cfg);
+
+        return result(g, scope, spawn, plan, start);
+    }
+
+    private static int[] toCells(GridSnapshot g, int[] xyz) {
+        if (xyz == null) return new int[0];
+        int[] cells = new int[xyz.length / 3];
+        int n = 0;
+        for (int k = 0; k + 2 < xyz.length; k += 3) {
+            int cell = g.index(xyz[k], xyz[k + 1], xyz[k + 2]);
+            if (cell >= 0) cells[n++] = cell;
+        }
+        return java.util.Arrays.copyOf(cells, n);
     }
 
     /** Dark spots of one chunk and their average feet Y (where the chunk outline is drawn). */
@@ -71,7 +121,10 @@ public final class Analysis {
         cfg.requireReachable = false;
         cfg.keepCells = keepCells(g, r);
         Planner.Plan plan = Planner.plan(g, spawn.dangerCells(), null, cfg);
+        return result(g, scope, spawn, plan, start);
+    }
 
+    private static Result result(GridSnapshot g, Scope scope, SpawnModel.Result spawn, Planner.Plan plan, long start) {
         Map<Long, long[]> sums = new HashMap<>();
         for (int cell : spawn.dangerCells()) {
             long key = ((long) (g.x(cell) >> 4) & 0xFFFFFFFFL) | (((long) (g.z(cell) >> 4) & 0xFFFFFFFFL) << 32);
@@ -82,14 +135,15 @@ public final class Analysis {
         Map<Long, ChunkInfo> chunks = new HashMap<>();
         sums.forEach((key, s) -> chunks.put(key, new ChunkInfo((int) s[0], (double) s[1] / s[0])));
 
-        int spawnable = 0, unknown = 0;
+        int spawnable = 0, unknown = 0, torches = 0;
         for (int i = 0; i < g.volume(); i++) {
             if (g.has(i, GridSnapshot.SPAWNABLE)) spawnable++;
             if (g.has(i, GridSnapshot.UNKNOWN)) unknown++;
+            if (g.has(i, GridSnapshot.TORCH_BLOCK) && scope.contains(g, i)) torches++;
         }
 
         return new Result(g, spawn.dangerCells(), spawn.unknownInScope(), plan.torches(), plan.uncovered().length,
-            chunks, (System.nanoTime() - start) / 1_000_000, spawnable, unknown);
+            chunks, (System.nanoTime() - start) / 1_000_000, spawnable, unknown, torches);
     }
 
     /**

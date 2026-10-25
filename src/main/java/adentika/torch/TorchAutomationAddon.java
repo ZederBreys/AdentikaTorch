@@ -1,6 +1,8 @@
 package adentika.torch;
 
+import adentika.torch.commands.TorchAreaCommand;
 import adentika.torch.commands.TorchBlockCommand;
+import adentika.torch.modules.TorchArea;
 import adentika.torch.modules.TorchBlocks;
 import adentika.torch.modules.TorchHighlight;
 import com.mojang.logging.LogUtils;
@@ -20,8 +22,10 @@ public class TorchAutomationAddon extends MeteorAddon {
 
         Modules.get().add(new TorchBlocks());
         Modules.get().add(new TorchHighlight());
+        Modules.get().add(new TorchArea());
 
         Commands.add(new TorchBlockCommand());
+        Commands.add(new TorchAreaCommand());
     }
 
     @Override
