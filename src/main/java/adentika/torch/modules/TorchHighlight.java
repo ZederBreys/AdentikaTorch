@@ -8,6 +8,7 @@ import adentika.torch.mc.Analysis;
 import adentika.torch.mc.BlockRules;
 import adentika.torch.mc.Msg;
 import adentika.torch.mc.PlanRenderer;
+import adentika.torch.mc.PlanSource;
 import adentika.torch.mc.WorldScan;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
@@ -31,7 +32,7 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
  * recommended torch positions. Places nothing. Scans incrementally within a per-tick time budget; analysis and
  * planning run on a background thread from an immutable snapshot.
  */
-public class TorchHighlight extends Module {
+public class TorchHighlight extends Module implements PlanSource {
     public enum Mode { Auto, Surface, Cave }
 
     private static final ExecutorService ANALYZER = Executors.newSingleThreadExecutor(r -> {
@@ -254,6 +255,7 @@ public class TorchHighlight extends Module {
     private WorldScan scan;
     private Analysis.Request scanRequest;
     private Future<Analysis.Result> pending;
+    private long scansStarted, scanInFlight, pendingScan, resultScan;
     private Analysis.Result result;
     private BlockPos scanCenter;
     private int rulesVersion = -1;
@@ -316,6 +318,7 @@ public class TorchHighlight extends Module {
             try {
                 boolean first = result == null;
                 result = pending.get();
+                resultScan = pendingScan;
                 if (first) reportSummary(result);
             } catch (Exception e) {
                 Msg.error("highlight", Msg.t("common.failed"));
@@ -330,6 +333,7 @@ public class TorchHighlight extends Module {
             } else if (scan.step(System.nanoTime() + budgetMs.get() * 1_000_000L)) {
                 Analysis.Request done = withGrid(scanRequest, scan);
                 pending = ANALYZER.submit(() -> Analysis.run(done));
+                pendingScan = scanInFlight;
                 scan = null;
             }
             return;
@@ -358,6 +362,7 @@ public class TorchHighlight extends Module {
 
         rulesVersion = BlockRules.version();
         boolean overworld = mc.world.getRegistryKey() == World.OVERWORLD;
+        scanInFlight = ++scansStarted;
         scan = new WorldScan(mc.world, BlockRules.get(), p.getX() - r - margin, minY, p.getZ() - r - margin,
             size, maxY - minY + 1, size, overworld, includeNoMonsterBiomes.get());
         scanRequest = new Analysis.Request(null, null, p.getX(), p.getY(), p.getZ(), r, down, up,
@@ -410,6 +415,27 @@ public class TorchHighlight extends Module {
             xyz[k++] = g.z(t.cell());
         }
         return xyz;
+    }
+
+    @Override
+    public Analysis.Result result() {
+        return result;
+    }
+
+    @Override
+    public long resultScanId() {
+        return result == null ? 0 : resultScan;
+    }
+
+    @Override
+    public long requestFreshScan() {
+        dirty = true;
+        return scansStarted + 1;
+    }
+
+    /** Current analysis mode (null before the first scan). */
+    public Boolean isCave() {
+        return lastCave;
     }
 
     @Override

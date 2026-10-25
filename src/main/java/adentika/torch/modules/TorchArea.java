@@ -7,7 +7,10 @@ import adentika.torch.core.SpawnModel;
 import adentika.torch.mc.Analysis;
 import adentika.torch.mc.BlockRules;
 import adentika.torch.mc.Msg;
+import adentika.torch.mc.PlacementDriver;
 import adentika.torch.mc.PlanRenderer;
+import adentika.torch.mc.PlanSource;
+import adentika.torch.mc.TorchPlacer;
 import adentika.torch.mc.WorldScan;
 import meteordevelopment.meteorclient.events.game.GameLeftEvent;
 import meteordevelopment.meteorclient.events.meteor.KeyEvent;
@@ -40,7 +43,7 @@ import java.util.concurrent.Future;
  * Selected area (PRODUCT_SPEC §2, mode 2a), milestone M3: select two corners, preview dark spots and the torch plan,
  * estimate the number of torches. Places nothing and does not move the player (placement: M4, walking: M5).
  */
-public class TorchArea extends Module {
+public class TorchArea extends Module implements PlanSource {
     private static final ExecutorService ANALYZER = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "torch-automation-area");
         t.setDaemon(true);
@@ -103,6 +106,52 @@ public class TorchArea extends Module {
         .build()
     );
 
+    private final Setting<Boolean> placeInReach = sgGeneral.add(new BoolSetting.Builder()
+        .name("place-in-reach")
+        .description("While you walk through the selection, place planned torches within reach (turn off to stop at once).")
+        .defaultValue(false)
+        .onChanged(this::onPlaceInReachChanged)
+        .build()
+    );
+
+    private final Setting<PlacementDriver.Mode> placementMode = sgGeneral.add(new EnumSetting.Builder<PlacementDriver.Mode>()
+        .name("placement-mode")
+        .description("Aggressive: turn and click in the same tick, several torches in a row. Legit: wait for the server's answer and a fresh scan before the next torch (more compatible).")
+        .defaultValue(PlacementDriver.Mode.Aggressive)
+        .visible(placeInReach::get)
+        .build()
+    );
+
+    private final Setting<Integer> fastDelay = sgGeneral.add(new IntSetting.Builder()
+        .name("fast-delay-ticks")
+        .description("Aggressive mode: ticks between two clicks (1 = every tick, 4 = like holding right click).")
+        .defaultValue(2)
+        .range(1, 20)
+        .sliderRange(1, 10)
+        .visible(() -> placeInReach.get() && placementMode.get() == PlacementDriver.Mode.Aggressive)
+        .build()
+    );
+
+    private final Setting<Integer> delayTicks = sgGeneral.add(new IntSetting.Builder()
+        .name("delay-ticks")
+        .description("Legit mode: pause between two torches, in ticks (20 ticks = 1 second).")
+        .defaultValue(4)
+        .range(2, 40)
+        .sliderRange(2, 20)
+        .visible(() -> placeInReach.get() && placementMode.get() == PlacementDriver.Mode.Legit)
+        .build()
+    );
+
+    private final Setting<Integer> maxFailures = sgGeneral.add(new IntSetting.Builder()
+        .name("max-failures")
+        .description("Stop placing after this many torches in a row did not appear.")
+        .defaultValue(3)
+        .range(1, 10)
+        .sliderRange(1, 10)
+        .visible(placeInReach::get)
+        .build()
+    );
+
     private final Setting<Integer> budgetMs = sgGeneral.add(new IntSetting.Builder()
         .name("budget-ms")
         .description("Maximum scan time per client tick, in milliseconds.")
@@ -148,6 +197,9 @@ public class TorchArea extends Module {
         .build()
     );
 
+    private final PlacementDriver driver = new PlacementDriver();
+    private static boolean serverWarningShown;
+
     // Selection (kept while the module is off; cleared on world change)
     private BlockPos corner1, corner2;
     private ClientWorld selectionWorld;
@@ -156,6 +208,7 @@ public class TorchArea extends Module {
     private WorldScan scan;
     private int[] scanBounds;
     private Future<Analysis.Result> pending;
+    private long scansStarted, scanInFlight, pendingScan, resultScan;
     private Analysis.Result result;
     private int rulesVersion = -1;
     private boolean dirty;
@@ -193,8 +246,21 @@ public class TorchArea extends Module {
         return corner1 != null && corner2 != null;
     }
 
+    @Override
     public Analysis.Result result() {
         return result;
+    }
+
+    @Override
+    public long resultScanId() {
+        return result == null ? 0 : resultScan;
+    }
+
+    @Override
+    public long requestFreshScan() {
+        dirty = true;
+        dirtyDelay = 1;
+        return scansStarted + 1;
     }
 
     /** Selection bounds {minX, minY, minZ, maxX, maxY, maxZ} including headroom, or null. */
@@ -237,18 +303,63 @@ public class TorchArea extends Module {
 
     @Override
     public void onActivate() {
+        // Placing is never restored from the saved config: it must be switched on again in this session.
+        if (placeInReach.get()) placeInReach.set(false);
         resetAnalysis();
         if (!hasSelection()) Msg.info("area", Msg.t("area.hint", Msg.value(cornerBind.get())));
     }
 
     @Override
     public void onDeactivate() {
+        driver.cancel();
         resetAnalysis();
     }
 
     @EventHandler
     private void onGameLeft(GameLeftEvent event) {
+        driver.cancel();
         clearSelection();
+    }
+
+    // Placement while walking (M4)
+
+    private void onPlaceInReachChanged(boolean on) {
+        if (on) {
+            driver.reset();
+            if (!serverWarningShown) {
+                Msg.warning("area", Msg.t("common.server_warning"));
+                serverWarningShown = true;
+            }
+            if (!TorchPlacer.hasTorch()) Msg.warning("area", Msg.t("common.no_torches_hotbar"));
+        } else {
+            driver.cancel();
+        }
+    }
+
+    @EventHandler
+    private void onPlaceTick(TickEvent.Pre event) {
+        if (!placeInReach.get() || mc.world == null || mc.player == null || !hasSelection() || validate() != null) return;
+        driver.configure(placementMode.get(), delayTicks.get(), fastDelay.get(), maxFailures.get(), true);
+        handlePlacement(driver.tickPre(this));
+    }
+
+    @EventHandler
+    private void onPlaceTickPost(TickEvent.Post event) {
+        if (!placeInReach.get() || mc.world == null || mc.player == null) return;
+        handlePlacement(driver.tickPost(this));
+    }
+
+    private void handlePlacement(PlacementDriver.Stop stop) {
+        String reason = switch (stop) {
+            case NO_TORCHES -> "common.stop.no_torches";
+            case REPEATED_FAILURES -> "common.stop.failures";
+            case DEAD -> "common.stop.dead";
+            case NONE -> null;
+        };
+        if (reason != null) {
+            Msg.warning("area", Msg.t(reason));
+            placeInReach.set(false);
+        }
     }
 
     private void resetAnalysis() {
@@ -302,6 +413,7 @@ public class TorchArea extends Module {
         if (pending != null && pending.isDone()) {
             try {
                 result = pending.get();
+                resultScan = pendingScan;
                 if (summaryDue) report(result);
                 else reportProgress(result);
                 summaryDue = false;
@@ -320,6 +432,7 @@ public class TorchArea extends Module {
                     scanBounds[3], scanBounds[4], scanBounds[5], profile.get(), BlockRules.get().distrustsVariableLight(),
                     preferWall.get(), previousTorches());
                 pending = ANALYZER.submit(() -> Analysis.runArea(request));
+                pendingScan = scanInFlight;
                 scan = null;
             }
             return;
@@ -336,6 +449,7 @@ public class TorchArea extends Module {
         int minY = Math.max(mc.world.getBottomY(), b[1] - MARGIN);
         int maxY = Math.min(mc.world.getTopY() - 1, b[4] + MARGIN);
         rulesVersion = BlockRules.version();
+        scanInFlight = ++scansStarted;
         scan = new WorldScan(mc.world, BlockRules.get(), b[0] - MARGIN, minY, b[2] - MARGIN,
             b[3] - b[0] + 1 + 2 * MARGIN, maxY - minY + 1, b[5] - b[2] + 1 + 2 * MARGIN, true, includeNoMonsterBiomes.get());
         scanBounds = b;
@@ -439,5 +553,11 @@ public class TorchArea extends Module {
         if (result == null || mc.player == null) return;
         PlanRenderer.spots(event, result, spotColor.get(), mc.player.getX(), mc.player.getY(), mc.player.getZ(), 1e4, maxSpots.get());
         PlanRenderer.torches(event, result, torchColor.get());
+        TorchPlacer.Target t = driver.currentTarget();
+        if (t != null) {
+            BlockPos c = t.cell();
+            event.renderer.box(c.getX() + 0.3, c.getY(), c.getZ() + 0.3, c.getX() + 0.7, c.getY() + 0.8, c.getZ() + 0.7,
+                sel, sel, ShapeMode.Lines, 0);
+        }
     }
 }

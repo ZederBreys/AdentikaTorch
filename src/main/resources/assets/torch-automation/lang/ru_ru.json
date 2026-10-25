@@ -2,14 +2,12 @@
   "torch-automation.source.area": "Факелы: область",
   "torch-automation.source.highlight": "Факелы: подсветка",
   "torch-automation.source.blocks": "Факелы: блоки",
-
   "torch-automation.common.overworld_only": "Работает только в обычном мире.",
   "torch-automation.common.failed": "Ошибка анализа. Подробности — в логе игры.",
   "torch-automation.common.status.scan": "скан %s%%",
   "torch-automation.common.status.analysing": "анализ",
   "torch-automation.common.yes": "да",
   "torch-automation.common.no": "нет",
-
   "torch-automation.area.corner": "Угол %s: %s",
   "torch-automation.area.need_corners": "Сначала задайте два угла.",
   "torch-automation.area.too_big": "Область %s больше допустимой (%s). Выделите область поменьше или увеличьте max-size.",
@@ -32,7 +30,6 @@
   "torch-automation.area.status.invalid": "область не подходит",
   "torch-automation.area.status.done": "готово",
   "torch-automation.area.status.result": "нужно ≈%s · стоит %s · хотбар %s",
-
   "torch-automation.highlight.overworld_only": "Подсветка работает только в обычном мире; здесь она на паузе.",
   "torch-automation.highlight.cave": "Под землёй: пещерный режим.",
   "torch-automation.highlight.surface": "На поверхности: обычный режим.",
@@ -43,7 +40,6 @@
   "torch-automation.highlight.status.surface": "поверхность",
   "torch-automation.highlight.status.clear": "тёмных мест нет",
   "torch-automation.highlight.status.result": "тёмных %s · факелов ≈%s",
-
   "torch-automation.blocks.settings_only": "Этот модуль только хранит настройки, включать его не нужно.",
   "torch-automation.blocks.info.look": "Наведите на блок или укажите его: .torchblock info <блок>",
   "torch-automation.blocks.info.header": "Блок: %s",
@@ -59,11 +55,23 @@
   "torch-automation.blocks.info.source.user": "добавлено вами",
   "torch-automation.blocks.info.source.none": "-",
   "torch-automation.blocks.info.game": "Данные игры: %s · полная коллизия %s · падает %s · интерактивный %s · урон огнём %s",
-
   "torch-automation.category.hazard": "Опасные",
   "torch-automation.category.no_click": "Не кликать",
   "torch-automation.category.do_not_touch": "Не трогать",
   "torch-automation.category.unstable_support": "Нестабильная опора",
   "torch-automation.category.consequences": "Последствия",
-  "torch-automation.category.variable_light": "Переменный свет"
+  "torch-automation.category.variable_light": "Переменный свет",
+  "torch-automation.source.escort": "Факелы: сопровождение",
+  "torch-automation.common.server_warning": "Автоматическая установка факелов может быть запрещена правилами сервера. Используйте её только там, где автоматизация разрешена.",
+  "torch-automation.common.no_torches_hotbar": "В хотбаре и второй руке нет факелов — положите их туда, чтобы мод мог ставить.",
+  "torch-automation.common.stop.world": "Остановлено: вы покинули обычный мир.",
+  "torch-automation.common.stop.no_torches": "Остановлено: в хотбаре закончились факелы.",
+  "torch-automation.common.stop.failures": "Остановлено: несколько факелов подряд не появились (сервер отклонил или что-то мешает).",
+  "torch-automation.common.stop.dead": "Остановлено: вы погибли.",
+  "torch-automation.escort.started": "Сопровождение включено: ходите, факелы ставятся в жёлтые маркеры в зоне досягаемости. Выключите модуль, чтобы остановить.",
+  "torch-automation.escort.stopped": "Сопровождение выключено. Поставлено факелов: %s.",
+  "torch-automation.escort.stop.highlight_off": "Остановлено: выключена подсветка torch-highlight (сопровождению нужен её план).",
+  "torch-automation.escort.status.placing": "ставлю · поставлено %s",
+  "torch-automation.escort.status.walk": "подойдите к маркеру · поставлено %s",
+  "torch-automation.escort.status.placed": "поставлено %s"
 }

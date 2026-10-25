@@ -2,14 +2,12 @@
   "torch-automation.source.area": "Torch Area",
   "torch-automation.source.highlight": "Torch Highlight",
   "torch-automation.source.blocks": "Torch Blocks",
-
   "torch-automation.common.overworld_only": "Works only in the Overworld.",
   "torch-automation.common.failed": "Analysis failed. Details are in the game log.",
   "torch-automation.common.status.scan": "scan %s%%",
   "torch-automation.common.status.analysing": "analysing",
   "torch-automation.common.yes": "yes",
   "torch-automation.common.no": "no",
-
   "torch-automation.area.corner": "Corner %s: %s",
   "torch-automation.area.need_corners": "Set two corners first.",
   "torch-automation.area.too_big": "The area %s is larger than the limit %s. Select a smaller area or raise max-size.",
@@ -32,7 +30,6 @@
   "torch-automation.area.status.invalid": "area not valid",
   "torch-automation.area.status.done": "done",
   "torch-automation.area.status.result": "need ≈%s · placed %s · hotbar %s",
-
   "torch-automation.highlight.overworld_only": "Highlight works only in the Overworld; paused here.",
   "torch-automation.highlight.cave": "Underground: cave mode.",
   "torch-automation.highlight.surface": "On the surface: surface mode.",
@@ -43,7 +40,6 @@
   "torch-automation.highlight.status.surface": "surface",
   "torch-automation.highlight.status.clear": "no dark spots",
   "torch-automation.highlight.status.result": "dark %s · torches ≈%s",
-
   "torch-automation.blocks.settings_only": "This module only holds settings; it does not need to be enabled.",
   "torch-automation.blocks.info.look": "Look at a block or name one: .torchblock info <block>",
   "torch-automation.blocks.info.header": "Block: %s",
@@ -59,11 +55,23 @@
   "torch-automation.blocks.info.source.user": "added by you",
   "torch-automation.blocks.info.source.none": "-",
   "torch-automation.blocks.info.game": "Game data: %s · full collision %s · falls %s · interactive %s · fire damage %s",
-
   "torch-automation.category.hazard": "Hazard",
   "torch-automation.category.no_click": "Do not click",
   "torch-automation.category.do_not_touch": "Do not touch",
   "torch-automation.category.unstable_support": "Unstable support",
   "torch-automation.category.consequences": "Consequences",
-  "torch-automation.category.variable_light": "Variable light"
+  "torch-automation.category.variable_light": "Variable light",
+  "torch-automation.source.escort": "Torch Escort",
+  "torch-automation.common.server_warning": "Automatic torch placement may be forbidden by a server's rules. Use it only where automation is allowed.",
+  "torch-automation.common.no_torches_hotbar": "No torches in the hotbar or offhand: put torches there to place them.",
+  "torch-automation.common.stop.world": "Stopped: you left the Overworld.",
+  "torch-automation.common.stop.no_torches": "Stopped: no torches left in the hotbar.",
+  "torch-automation.common.stop.failures": "Stopped: several torches in a row did not appear (the server rejected them or something is in the way).",
+  "torch-automation.common.stop.dead": "Stopped: you died.",
+  "torch-automation.escort.started": "Escort on: walk around, torches are placed at the yellow markers within reach. Toggle the module off to stop.",
+  "torch-automation.escort.stopped": "Escort off. Torches placed: %s.",
+  "torch-automation.escort.stop.highlight_off": "Stopped: torch-highlight was turned off (escort needs its plan).",
+  "torch-automation.escort.status.placing": "placing · %s placed",
+  "torch-automation.escort.status.walk": "walk to a marker · %s placed",
+  "torch-automation.escort.status.placed": "%s placed"
 }
