@@ -2,6 +2,7 @@ package adentika.torch.commands;
 
 import adentika.torch.mc.Msg;
 import adentika.torch.modules.TorchArea;
+import adentika.torch.modules.TorchPass;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import meteordevelopment.meteorclient.commands.Command;
@@ -13,7 +14,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
 /**
- * {@code .torcharea pos1|pos2 [x y z] | clear | info} (coordinates absolute or {@code ~}-relative): selection for the {@code torch-area} module without the keybind.
+ * {@code .torcharea pos1|pos2 [x y z] | clear | info | start [force] | pause | resume | cancel}
+ * (coordinates absolute or {@code ~}-relative): selection for the {@code torch-area} module without the keybind.
  * Without coordinates pos1/pos2 use the block you look at, or the block under your feet when you look at nothing.
  */
 public class TorchAreaCommand extends Command {
@@ -35,6 +37,27 @@ public class TorchAreaCommand extends Command {
         builder.then(literal("clear").executes(ctx -> {
             area().clearSelection();
             Msg.info("area", Msg.t("area.cleared"));
+            return SINGLE_SUCCESS;
+        }));
+        builder.then(literal("start")
+            .executes(ctx -> {
+                if (!pass().isActive()) pass().toggle();
+                return SINGLE_SUCCESS;
+            })
+            .then(literal("force").executes(ctx -> {
+                pass().forceStart();
+                return SINGLE_SUCCESS;
+            })));
+        builder.then(literal("pause").executes(ctx -> {
+            pass().pause();
+            return SINGLE_SUCCESS;
+        }));
+        builder.then(literal("resume").executes(ctx -> {
+            pass().resume();
+            return SINGLE_SUCCESS;
+        }));
+        builder.then(literal("cancel").executes(ctx -> {
+            pass().cancelTask();
             return SINGLE_SUCCESS;
         }));
         builder.then(literal("info").executes(ctx -> {
@@ -65,6 +88,10 @@ public class TorchAreaCommand extends Command {
         BlockPos base = mc.player != null ? mc.player.getBlockPos() : BlockPos.ORIGIN;
         return new BlockPos(CoordinateArgumentType.get(ctx, "x").resolve(base.getX()),
             CoordinateArgumentType.get(ctx, "y").resolve(base.getY()), CoordinateArgumentType.get(ctx, "z").resolve(base.getZ()));
+    }
+
+    private static TorchPass pass() {
+        return Modules.get().get(TorchPass.class);
     }
 
     private static TorchArea area() {

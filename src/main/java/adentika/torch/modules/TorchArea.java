@@ -263,6 +263,10 @@ public class TorchArea extends Module implements PlanSource {
         return scansStarted + 1;
     }
 
+    public adentika.torch.core.SpawnModel.Profile profile() {
+        return profile.get();
+    }
+
     /** Selection bounds {minX, minY, minZ, maxX, maxY, maxZ} including headroom, or null. */
     public int[] bounds() {
         if (!hasSelection()) return null;
@@ -270,6 +274,12 @@ public class TorchArea extends Module implements PlanSource {
             Math.min(corner1.getX(), corner2.getX()), Math.min(corner1.getY(), corner2.getY()), Math.min(corner1.getZ(), corner2.getZ()),
             Math.max(corner1.getX(), corner2.getX()), Math.max(corner1.getY(), corner2.getY()) + HEADROOM, Math.max(corner1.getZ(), corner2.getZ())
         };
+    }
+
+    /** Wider than the preview limit: shown as a frame only; torch-pass processes it tile by tile. */
+    public boolean largeForPreview() {
+        int[] b = bounds();
+        return b != null && (b[3] - b[0] + 1 > maxSize.get() || b[5] - b[2] + 1 > maxSize.get());
     }
 
     /** Null if the selection is acceptable, otherwise the reason (localised). */
@@ -286,6 +296,12 @@ public class TorchArea extends Module implements PlanSource {
     private void onSelectionChanged() {
         resetAnalysis();
         if (!hasSelection()) return;
+        if (largeForPreview()) {
+            // Not an error: the auto pass handles large areas tile by tile.
+            int[] b = bounds();
+            Msg.info("area", Msg.t("area.large", Msg.value((b[3] - b[0] + 1) + "×" + (b[5] - b[2] + 1)), Msg.value(maxSize.get())));
+            return;
+        }
         Text problem = validate();
         if (problem != null) Msg.error("area", problem);
         else if (!isActive()) Msg.info("area", Msg.t("area.enable"));
@@ -534,6 +550,7 @@ public class TorchArea extends Module implements PlanSource {
     @Override
     public String getInfoString() {
         if (!hasSelection()) return Msg.s(corner1 != null ? "area.status.corner2" : "area.status.select");
+        if (largeForPreview()) return Msg.s("area.status.large");
         if (validate() != null) return Msg.s("area.status.invalid");
         if (scan != null) return Msg.s("common.status.scan", (int) (scan.progress() * 100));
         if (result == null) return Msg.s("common.status.analysing");
@@ -552,7 +569,10 @@ public class TorchArea extends Module implements PlanSource {
 
         if (result == null || mc.player == null) return;
         PlanRenderer.spots(event, result, spotColor.get(), mc.player.getX(), mc.player.getY(), mc.player.getZ(), 1e4, maxSpots.get());
-        PlanRenderer.torches(event, result, torchColor.get());
+        // torch-pass shows its own plan while it runs (no second set of markers).
+        if (!meteordevelopment.meteorclient.systems.modules.Modules.get().get(TorchPass.class).isActive()) {
+            PlanRenderer.torches(event, result, torchColor.get());
+        }
         TorchPlacer.Target t = driver.currentTarget();
         if (t != null) {
             BlockPos c = t.cell();

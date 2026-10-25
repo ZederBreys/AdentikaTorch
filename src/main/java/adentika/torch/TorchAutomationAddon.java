@@ -6,6 +6,7 @@ import adentika.torch.modules.TorchArea;
 import adentika.torch.modules.TorchBlocks;
 import adentika.torch.modules.TorchEscort;
 import adentika.torch.modules.TorchHighlight;
+import adentika.torch.modules.TorchPass;
 import com.mojang.logging.LogUtils;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
 import meteordevelopment.meteorclient.commands.Commands;
@@ -25,6 +26,7 @@ public class TorchAutomationAddon extends MeteorAddon {
         Modules.get().add(new TorchHighlight());
         Modules.get().add(new TorchArea());
         Modules.get().add(new TorchEscort());
+        Modules.get().add(new TorchPass());
 
         Commands.add(new TorchBlockCommand());
         Commands.add(new TorchAreaCommand());

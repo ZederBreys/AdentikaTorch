@@ -455,6 +455,9 @@ public class TorchHighlight extends Module implements PlanSource {
             PlanRenderer.spots(event, result, spotColor.get(), mc.player.getX(), mc.player.getY(), mc.player.getZ(),
                 spotRadius.get(), maxSpots.get());
         }
-        if (showTorches.get()) PlanRenderer.torches(event, result, torchColor.get());
+        // While torch-pass runs it shows its own plan; two different plans at once would show "ghost" torches.
+        if (showTorches.get() && !meteordevelopment.meteorclient.systems.modules.Modules.get().get(TorchPass.class).isActive()) {
+            PlanRenderer.torches(event, result, torchColor.get());
+        }
     }
 }
