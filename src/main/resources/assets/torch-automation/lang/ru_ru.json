@@ -83,7 +83,6 @@
   "torch-automation.pass.started": "Автопроход начат: участков %s. Пауза: .torcharea pause · стоп: выключите torch-pass.",
   "torch-automation.pass.resumed": "Продолжаю сохранённый проход: готово %s из %s участков.",
   "torch-automation.pass.stopped": "Автопроход остановлен. Поставлено факелов: %s · участков готово: %s из %s. Включите снова, чтобы продолжить.",
-  "torch-automation.pass.paused": "Пауза. Продолжить: .torcharea resume (или клавиша паузы).",
   "torch-automation.pass.resumed_play": "Продолжаю.",
   "torch-automation.pass.cancelled": "Задача удалена. Поставленные факелы остаются на месте.",
   "torch-automation.pass.progress": "Участков готово: %s из %s · поставлено факелов: %s",
@@ -96,5 +95,19 @@
   "torch-automation.pass.status.moving": "иду",
   "torch-automation.pass.status.placing": "ставлю",
   "torch-automation.area.large": "Большая область %s: превью работает до %s блоков по стороне. torch-pass пройдёт её по участкам.",
-  "torch-automation.area.status.large": "большая область · используйте torch-pass"
+  "torch-automation.area.status.large": "большая область · используйте torch-pass",
+  "torch-automation.source.around": "Факелы вокруг",
+  "torch-automation.pass.paused.pass": "Пауза. Продолжить: .torcharea resume (или клавиша паузы).",
+  "torch-automation.pass.paused.around": "Пауза. Продолжить: .torcharound resume (или клавиша паузы).",
+  "torch-automation.around.busy": "Baritone занят другой задачей. Остановите её (#stop) или перехватите: .torcharound start force.",
+  "torch-automation.pass.stop.limit": "Остановлено: достигнут лимит факелов %s. Увеличьте max-torches, чтобы продолжить.",
+  "torch-automation.pass.progress_limit": "Участков готово: %s из %s · поставлено факелов: %s · до лимита осталось: %s",
+  "torch-automation.pass.status.limit": "лимит %s",
+  "torch-automation.around.preview": "Граница области на 10 с: %s блоков, высота %s, режим: %s. Запуск: .torcharound start",
+  "torch-automation.around.no_task": "Задачи пока нет: .torcharound start [радиус]",
+  "torch-automation.around.mode.cave": "пещера",
+  "torch-automation.around.mode.surface": "поверхность",
+  "torch-automation.around.started": "Факелы вокруг вас: область %s блоков, высота %s, режим: %s, лимит факелов: %s, участков: %s. Пауза: .torcharound pause · стоп: выключите torch-around.",
+  "torch-automation.around.no_limit": "нет",
+  "torch-automation.around.cave_no_dig": "Пещерный режим: Baritone только ходит, не копает и не строит (allow-digging-in-caves)."
 }

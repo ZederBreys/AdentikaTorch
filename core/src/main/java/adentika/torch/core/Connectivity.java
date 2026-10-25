@@ -10,13 +10,22 @@ public final class Connectivity {
 
     /** Cells reachable from {@code start} through passable, known cells (6-neighbourhood). Start must be passable. */
     public static boolean[] flood(GridSnapshot g, int start) {
-        boolean[] reached = new boolean[g.volume()];
-        if (start < 0 || !isOpen(g, start)) return reached;
+        return flood(g, new int[]{start});
+    }
 
+    /**
+     * Same from several starting cells, e.g. cells already known to be connected to the player from a neighbouring,
+     * overlapping snapshot (large areas are scanned tile by tile). Non-passable or invalid starts are ignored.
+     */
+    public static boolean[] flood(GridSnapshot g, int[] starts) {
+        boolean[] reached = new boolean[g.volume()];
         int[] queue = new int[g.volume()];
         int head = 0, tail = 0;
-        reached[start] = true;
-        queue[tail++] = start;
+        for (int start : starts) {
+            if (start < 0 || start >= reached.length || reached[start] || !isOpen(g, start)) continue;
+            reached[start] = true;
+            queue[tail++] = start;
+        }
         while (head < tail) {
             int cell = queue[head++];
             for (int dir = 0; dir < Dir.COUNT; dir++) {

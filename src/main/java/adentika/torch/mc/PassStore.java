@@ -41,24 +41,34 @@ public final class PassStore {
         return where + "|" + (mc.world != null ? mc.world.getRegistryKey().getValue() : "?");
     }
 
-    /** Saved tile states for exactly this selection in this world, or null. */
-    public static String load(int[] bounds) {
-        Entry e = read().get(worldKey());
+    /** Entry key: world key, plus the kind of pass ("pass" keeps the 0.5.x key for compatibility). */
+    private static String key(String kind) {
+        return "pass".equals(kind) ? worldKey() : worldKey() + "|" + kind;
+    }
+
+    /** Saved tile states for exactly these bounds in this world, or null. */
+    public static String load(String kind, int[] bounds) {
+        Entry e = read().get(key(kind));
         return e != null && Arrays.equals(e.bounds, bounds) ? e.tiles : null;
     }
 
-    public static void save(int[] bounds, String tiles) {
+    /** The saved entry of this kind in this world (any bounds), or null. */
+    public static Entry entry(String kind) {
+        return read().get(key(kind));
+    }
+
+    public static void save(String kind, int[] bounds, String tiles) {
         Map<String, Entry> all = read();
         Entry e = new Entry();
         e.bounds = bounds;
         e.tiles = tiles;
-        all.put(worldKey(), e);
+        all.put(key(kind), e);
         write(all);
     }
 
-    public static void clear() {
+    public static void clear(String kind) {
         Map<String, Entry> all = read();
-        if (all.remove(worldKey()) != null) write(all);
+        if (all.remove(key(kind)) != null) write(all);
     }
 
     private static Map<String, Entry> read() {

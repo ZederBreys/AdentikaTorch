@@ -44,7 +44,9 @@ public final class Analysis {
         int spawnableCells,
         int unknownCells,
         /** torches already standing inside the scope */
-        int existingTorches
+        int existingTorches,
+        /** cells air-connected to the seeds (only for requests with connectSeeds), else null */
+        boolean[] connected
     ) {
     }
 
@@ -53,6 +55,10 @@ public final class Analysis {
      * at positions reachable from a standable cell of the snapshot, so the estimate matches what can be placed later.
      *
      * @param previousTorches world x, y, z triples of the last plan for this selection (kept while still useful)
+     * @param connectSeeds    null: the whole box is the scope (selection). Otherwise only cells air-connected to these
+     *                        cells count (torch-around: no closed mine under your feet); standing spots must be connected too
+     * @param surfaceY        per-column surface Y of the snapshot (see {@link WorldScan#surfaceY()}), used with maxDepth
+     * @param maxDepth        surface mode: ignore spots deeper than this below the surface; -1 = no limit
      */
     public record AreaRequest(
         GridSnapshot grid,
@@ -60,20 +66,31 @@ public final class Analysis {
         SpawnModel.Profile profile,
         boolean stableLightOnly,
         boolean preferWall,
-        int[] previousTorches
+        int[] previousTorches,
+        int[] connectSeeds,
+        int[] surfaceY,
+        int maxDepth
     ) {
+        /** Plain box scope (selection), as used by torch-area and torch-pass. */
+        public AreaRequest(GridSnapshot grid, int minX, int minY, int minZ, int maxX, int maxY, int maxZ,
+                           SpawnModel.Profile profile, boolean stableLightOnly, boolean preferWall, int[] previousTorches) {
+            this(grid, minX, minY, minZ, maxX, maxY, maxZ, profile, stableLightOnly, preferWall, previousTorches, null, null, -1);
+        }
     }
 
     public static Result runArea(AreaRequest r) {
         long start = System.nanoTime();
         GridSnapshot g = r.grid();
         Scope scope = new Scope(r.minX(), r.minY(), r.minZ(), r.maxX(), r.maxY(), r.maxZ());
+        boolean[] connected = r.connectSeeds() != null ? Connectivity.flood(g, r.connectSeeds()) : null;
+        if (connected != null) scope.requireConnected(connected);
+        if (r.surfaceY() != null && r.maxDepth() >= 0) scope.maxDepthBelowSurface(r.surfaceY(), r.maxDepth());
 
         SpawnModel.LightMode mode = r.stableLightOnly() ? SpawnModel.LightMode.STABLE_ONLY : SpawnModel.LightMode.REAL;
         SpawnModel.Result spawn = SpawnModel.analyze(g, scope, r.profile(), mode);
 
         boolean[] standFrom = new boolean[g.volume()];
-        for (int i = 0; i < standFrom.length; i++) standFrom[i] = g.has(i, GridSnapshot.STANDABLE);
+        for (int i = 0; i < standFrom.length; i++) standFrom[i] = g.has(i, GridSnapshot.STANDABLE) && (connected == null || connected[i]);
 
         Planner.Config cfg = new Planner.Config();
         cfg.safeLight = r.profile().safeLight;
@@ -82,7 +99,7 @@ public final class Analysis {
         cfg.keepCells = toCells(g, r.previousTorches());
         Planner.Plan plan = Planner.plan(g, spawn.dangerCells(), standFrom, cfg);
 
-        return result(g, scope, spawn, plan, start);
+        return result(g, scope, spawn, plan, start, connected);
     }
 
     private static int[] toCells(GridSnapshot g, int[] xyz) {
@@ -121,10 +138,10 @@ public final class Analysis {
         cfg.requireReachable = false;
         cfg.keepCells = keepCells(g, r);
         Planner.Plan plan = Planner.plan(g, spawn.dangerCells(), null, cfg);
-        return result(g, scope, spawn, plan, start);
+        return result(g, scope, spawn, plan, start, null);
     }
 
-    private static Result result(GridSnapshot g, Scope scope, SpawnModel.Result spawn, Planner.Plan plan, long start) {
+    private static Result result(GridSnapshot g, Scope scope, SpawnModel.Result spawn, Planner.Plan plan, long start, boolean[] connected) {
         Map<Long, long[]> sums = new HashMap<>();
         for (int cell : spawn.dangerCells()) {
             long key = ((long) (g.x(cell) >> 4) & 0xFFFFFFFFL) | (((long) (g.z(cell) >> 4) & 0xFFFFFFFFL) << 32);
@@ -143,7 +160,7 @@ public final class Analysis {
         }
 
         return new Result(g, spawn.dangerCells(), spawn.unknownInScope(), plan.torches(), plan.uncovered().length,
-            chunks, (System.nanoTime() - start) / 1_000_000, spawnable, unknown, torches);
+            chunks, (System.nanoTime() - start) / 1_000_000, spawnable, unknown, torches, connected);
     }
 
     /**

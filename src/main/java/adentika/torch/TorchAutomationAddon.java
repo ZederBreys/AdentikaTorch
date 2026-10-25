@@ -1,8 +1,10 @@
 package adentika.torch;
 
 import adentika.torch.commands.TorchAreaCommand;
+import adentika.torch.commands.TorchAroundCommand;
 import adentika.torch.commands.TorchBlockCommand;
 import adentika.torch.modules.TorchArea;
+import adentika.torch.modules.TorchAround;
 import adentika.torch.modules.TorchBlocks;
 import adentika.torch.modules.TorchEscort;
 import adentika.torch.modules.TorchHighlight;
@@ -27,9 +29,11 @@ public class TorchAutomationAddon extends MeteorAddon {
         Modules.get().add(new TorchArea());
         Modules.get().add(new TorchEscort());
         Modules.get().add(new TorchPass());
+        Modules.get().add(new TorchAround());
 
         Commands.add(new TorchBlockCommand());
         Commands.add(new TorchAreaCommand());
+        Commands.add(new TorchAroundCommand());
     }
 
     @Override

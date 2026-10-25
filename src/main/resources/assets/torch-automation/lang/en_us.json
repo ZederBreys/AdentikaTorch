@@ -83,7 +83,6 @@
   "torch-automation.pass.started": "Auto pass started: %s tiles. Pause: .torcharea pause · stop: turn torch-pass off.",
   "torch-automation.pass.resumed": "Continuing the saved pass: %s of %s tiles already done.",
   "torch-automation.pass.stopped": "Auto pass stopped. Torches placed: %s · tiles done: %s of %s. Turn it on again to continue.",
-  "torch-automation.pass.paused": "Paused. Resume: .torcharea resume (or the pause key).",
   "torch-automation.pass.resumed_play": "Resumed.",
   "torch-automation.pass.cancelled": "Task removed. Placed torches stay where they are.",
   "torch-automation.pass.progress": "Tiles done: %s of %s · torches placed: %s",
@@ -96,5 +95,19 @@
   "torch-automation.pass.status.moving": "walking",
   "torch-automation.pass.status.placing": "placing",
   "torch-automation.area.large": "Large area %s: the preview works up to %s blocks per side. torch-pass will process it tile by tile.",
-  "torch-automation.area.status.large": "large area · use torch-pass"
+  "torch-automation.area.status.large": "large area · use torch-pass",
+  "torch-automation.source.around": "Torches Around",
+  "torch-automation.pass.paused.pass": "Paused. Resume: .torcharea resume (or the pause key).",
+  "torch-automation.pass.paused.around": "Paused. Resume: .torcharound resume (or the pause key).",
+  "torch-automation.around.busy": "Baritone is busy with another task. Stop it (#stop) or take over with .torcharound start force.",
+  "torch-automation.pass.stop.limit": "Stopped: the torch limit %s is reached. Raise max-torches to continue.",
+  "torch-automation.pass.progress_limit": "Tiles done: %s of %s · torches placed: %s · left until the limit: %s",
+  "torch-automation.pass.status.limit": "limit %s",
+  "torch-automation.around.preview": "Area preview for 10 s: %s blocks, height %s, mode: %s. Start: .torcharound start",
+  "torch-automation.around.no_task": "No task yet: .torcharound start [radius]",
+  "torch-automation.around.mode.cave": "cave",
+  "torch-automation.around.mode.surface": "surface",
+  "torch-automation.around.started": "Torches around you: area %s blocks, height %s, mode: %s, torch limit: %s, tiles: %s. Pause: .torcharound pause · stop: turn torch-around off.",
+  "torch-automation.around.no_limit": "none",
+  "torch-automation.around.cave_no_dig": "Cave mode: Baritone only walks, it does not dig or build (allow-digging-in-caves)."
 }

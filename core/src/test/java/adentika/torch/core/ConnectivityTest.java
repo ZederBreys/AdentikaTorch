@@ -55,6 +55,44 @@ class ConnectivityTest {
     }
 
     @Test
+    void severalStartsAndInvalidStartsAreHandled() {
+        Scene s = surfaceWithClosedCave();
+        boolean[] reached = Connectivity.flood(s.g, new int[]{-1, s.i(8, 3, 8), s.i(0, 6, 0), s.i(5, 5, 5)});
+        assertTrue(reached[s.i(15, 6, 15)], "surface reached from the surface start");
+        assertTrue(reached[s.i(4, 2, 4)], "cave reached from the cave start");
+        assertFalse(reached[s.i(5, 5, 5)], "a solid start is ignored");
+    }
+
+    @Test
+    void connectivityCarriesOverToAnOverlappingTile() {
+        // Two overlapping snapshots of the same world: the second one only knows the first one's results.
+        Scene first = Scene.flatAt(0, 0, 24, 6, 8);
+        Scene second = Scene.flatAt(16, 0, 24, 6, 8);
+        for (Scene s : new Scene[]{first, second}) {
+            for (int x = s.g.originX(); x < s.g.originX() + 24; x++) {
+                for (int z = 0; z < 8; z++) {
+                    for (int y = 1; y <= 2; y++) s.solid(x, y, z);
+                    s.floorCell(x, 3, z);
+                }
+            }
+        }
+        // Closed pocket under the surface, only inside the second tile.
+        for (int x = 30; x < 34; x++) second.air(x, 1, 3).floorCell(x, 1, 3);
+
+        boolean[] a = Connectivity.flood(first.g, first.i(2, 3, 2));
+        java.util.List<Integer> seeds = new java.util.ArrayList<>();
+        for (int c = 0; c < a.length; c++) {
+            if (!a[c]) continue;
+            int cell = second.g.index(first.g.x(c), first.g.y(c), first.g.z(c));
+            if (cell >= 0) seeds.add(cell);
+        }
+        boolean[] b = Connectivity.flood(second.g, seeds.stream().mapToInt(Integer::intValue).toArray());
+
+        assertTrue(b[second.i(39, 3, 7)], "far end of the second tile is connected through the overlap");
+        assertFalse(b[second.i(31, 1, 3)], "closed pocket in the second tile stays unconnected");
+    }
+
+    @Test
     void windowAndDepthLimitScope() {
         Scene s = surfaceWithClosedCave();
         for (int y = 3; y <= 5; y++) s.air(8, y, 8);
