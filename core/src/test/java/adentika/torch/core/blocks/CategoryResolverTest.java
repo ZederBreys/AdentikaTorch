@@ -76,7 +76,6 @@ class CategoryResolverTest {
     void unstableSupportFollowsDefaultsAndUser() {
         CategoryResolver r = resolver();
         assertFalse(r.canSupportTorch(OAK_LEAVES, Dir.UP), "leaves via #minecraft:leaves");
-        assertFalse(r.canSupportTorch(GRAVEL, Dir.UP), "falling block detected from traits");
 
         r.userRemove(Category.UNSTABLE_SUPPORT, OAK_LEAVES.id());
         assertTrue(r.canSupportTorch(OAK_LEAVES, Dir.UP));
@@ -87,6 +86,16 @@ class CategoryResolverTest {
         r.resetUser(Category.UNSTABLE_SUPPORT);
         assertTrue(r.canSupportTorch(STONE, Dir.UP));
         assertFalse(r.canSupportTorch(OAK_LEAVES, Dir.UP));
+    }
+
+    @Test
+    void fallingBlocksSupportTorchesUnlessUserExcludesThem() {
+        CategoryResolver r = resolver();
+        assertTrue(r.canSupportTorch(GRAVEL, Dir.UP), "sand and gravel hold torches (D-40)");
+
+        r.userAdd(Category.UNSTABLE_SUPPORT, GRAVEL.id());
+        assertFalse(r.canSupportTorch(GRAVEL, Dir.UP), "user choice excludes it");
+        assertFalse(r.canSupportTorch(OAK_LEAVES, Dir.UP), "leaves stay unstable (they decay)");
     }
 
     @Test

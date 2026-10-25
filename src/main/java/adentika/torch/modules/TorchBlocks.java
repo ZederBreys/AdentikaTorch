@@ -26,7 +26,7 @@ public class TorchBlocks extends Module {
 
     private final Setting<Boolean> avoidUnstable = sgOptions.add(new BoolSetting.Builder()
         .name("avoid-unstable-support")
-        .description("Do not attach torches to falling blocks, leaves or scaffolding.")
+        .description("Do not attach torches to leaves, scaffolding or blocks you add to unstable-support.")
         .defaultValue(true)
         .onChanged(v -> BlockRules.invalidate())
         .build()

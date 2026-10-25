@@ -36,7 +36,7 @@ public final class CategoryResolver {
     }
 
     public static final class Options {
-        /** D-30: do not use falling blocks, leaves, scaffolding as torch support. */
+        /** D-30/D-40: do not use leaves, scaffolding or user-listed blocks as torch support. */
         public boolean avoidUnstableSupport = true;
         /** D-21: light of variable emitters does not count as protection. */
         public boolean distrustVariableLight = true;
@@ -127,9 +127,9 @@ public final class CategoryResolver {
         return switch (category) {
             case HAZARD -> t.fluid() == BlockTraits.Fluid.LAVA || t.fireDamaging();
             case NO_CLICK -> t.interactive();
-            case UNSTABLE_SUPPORT -> t.gravityAffected();
             case VARIABLE_LIGHT -> t.variableLight();
-            case DO_NOT_TOUCH, CONSEQUENCES -> false;
+            // Falling blocks (sand, gravel) are not unstable by default (D-40): a desert must be lightable.
+            case UNSTABLE_SUPPORT, DO_NOT_TOUCH, CONSEQUENCES -> false;
         };
     }
 
