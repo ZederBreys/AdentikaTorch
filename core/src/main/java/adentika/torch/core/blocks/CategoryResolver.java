@@ -157,6 +157,11 @@ public final class CategoryResolver {
         return options.sneakToPlaceOnInteractive || !isIn(Category.NO_CLICK, t);
     }
 
+    /** D-21 option: light of variable emitters is not trusted. */
+    public boolean distrustsVariableLight() {
+        return options.distrustVariableLight;
+    }
+
     /** Placing on this block requires sneaking so the block's own click action is skipped. */
     public boolean needsSneak(BlockTraits t) {
         return isIn(Category.NO_CLICK, t);

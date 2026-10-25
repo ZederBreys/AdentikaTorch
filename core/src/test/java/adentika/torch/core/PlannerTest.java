@@ -75,6 +75,39 @@ class PlannerTest {
     }
 
     @Test
+    void previousPlanIsKeptAfterShiftingTheArea() {
+        Scene before = Scene.flatAt(0, 0, 61, 3, 41);
+        Planner.Plan first = plan(before, coverageOnly());
+
+        // Player moved 8 blocks east: the rescanned area is shifted, the world is the same.
+        Scene after = Scene.flatAt(8, 0, 61, 3, 41);
+        // Like Analysis: carry over only previous torches in the interior of the new area (> 13 from its x edges),
+        // i.e. the ones around the player; positions near the area edge may be re-planned freely.
+        java.util.List<Integer> keep = new java.util.ArrayList<>();
+        java.util.Set<Long> interior = new java.util.HashSet<>();
+        for (Planner.Torch t : first.torches()) {
+            int x = before.g.x(t.cell()), y = before.g.y(t.cell()), z = before.g.z(t.cell());
+            if (x < 8 + 14 || x > 68 - 14) continue;
+            keep.add(after.g.index(x, y, z));
+            interior.add(((long) x << 32) | (z & 0xFFFFFFFFL));
+        }
+        Planner.Config cfg = coverageOnly();
+        cfg.keepCells = keep.stream().mapToInt(Integer::intValue).toArray();
+        Planner.Plan second = plan(after, cfg);
+
+        java.util.Set<Long> secondWorld = new java.util.HashSet<>();
+        for (Planner.Torch t : second.torches()) secondWorld.add(((long) after.g.x(t.cell()) << 32) | (after.g.z(t.cell()) & 0xFFFFFFFFL));
+
+        assertEquals(0, second.uncovered().length);
+        assertTrue(!interior.isEmpty());
+        for (long p : interior) assertTrue(secondWorld.contains(p), "recommendation near the player moved: x=" + (p >> 32) + " z=" + (int) p);
+
+        Planner.Plan withoutKeep = plan(after, coverageOnly());
+        assertTrue(second.torches().size() <= withoutKeep.torches().size() + 2,
+            "keeping the old plan must not cost many extra torches: " + second.torches().size() + " vs " + withoutKeep.torches().size());
+    }
+
+    @Test
     void preferWallUsesWallTorchesAtEqualCoverage() {
         Scene s = Scene.flat(31, 3, 3);
         for (int x = 0; x < 31; x++) s.wall(x, 0).wall(x, 2);

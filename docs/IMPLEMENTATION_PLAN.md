@@ -72,7 +72,23 @@
 |---|---|
 | M0 | **выполнен 2026-10-25**, кроме ручной проверки в игре (модуль виден в Meteor) — за пользователем. Команда: `$env:JAVA_HOME = "C:\Users\ZederBreys\.jdks\jdk-21.0.12.1+1"; .\gradlew build` → BUILD SUCCESSFUL; `:core:test` — 2 теста, 0 ошибок; JAR содержит аддон + `core`, без классов Meteor/Baritone. Отличие от шаблона: модуль `core` упаковывается в JAR задачей `jar` (`evaluationDependsOn(":core")`). |
 | M1 | **выполнен 2026-10-25** (только ядро, без Minecraft). `.\gradlew build` → BUILD SUCCESSFUL; `:core:test` — **36 тестов, 0 ошибок** (LightSim 7, SpawnModel 6, Connectivity 4, Planner 6, CategoryResolver 11, LightLevels 2). Подробности — §5.1 |
-| M2–M7 | не начаты |
+| M2 | **код готов 2026-10-25, ручная проверка в игре не выполнена** — чек-лист `docs/MANUAL_TESTS.md` (H1–H16, U-T1…U-T3, U-5). `.\gradlew build` → BUILD SUCCESSFUL, 37 unit-тестов зелёные. Запуск `.\gradlew runClient` (тестовый клиент, офлайн, без Baritone): аддон загружается («Initializing Torch Automation»), ошибок аддона в логе нет; мир в тестовом клиенте **не открывался**. Подробности — §5.2 |
+| M3–M7 | не начаты |
+
+### 5.2 Итоги M2 (код)
+| Файл | Что |
+|---|---|
+| `mc/TraitsProvider` | `BlockState` → `BlockTraits` из API 1.21.1 (кэш); «переменный свет» = у блока есть состояния с разной яркостью (динамически, работает для модов); «интерактивность» — эвристика по классам блоков (блок-сущности кроме черепов, баннеров, скалка, спавнеров, костров и т.п.) |
+| `mc/WorldScan` | снимок мира по частям с бюджетом времени на тик: свет из `getLightLevel(BLOCK)`, opacity, грани (`getCullingFace` + `unionCoversFullCube`), спавн — `SpawnRestriction.isSpawnPosAllowed` + `isSpaceEmpty(spawnBox)` для zombie/spider/enderman + биом без монстров; опоры факелов — `Blocks.TORCH/WALL_TORCH.canPlaceAt` + правила `CategoryResolver`; поверхность колонки — heightmap `MOTION_BLOCKING` без листвы |
+| `mc/Analysis` | зона + связность + глубина → `SpawnModel` → `Planner` (в фоновом потоке, по неизменяемому снимку) + сводка по чанкам |
+| `mc/BlockRules` | текущий `CategoryResolver` из настроек `torch-blocks` |
+| `modules/TorchHighlight` | режим 3: Surface/Cave, радиус, окна, связность, глубина, профиль; рескан при сдвиге, изменении блоков в зоне, по таймеру, при смене правил; отрисовка мест, чанков, факелов; статус в списке модулей; только Overworld |
+| `modules/TorchBlocks` | настройки категорий (добавить/исключить для каждой из 6 категорий) и опций D-21/D-27/D-30; сам модуль не включается |
+| `commands/TorchBlockCommand` | `.torchblock info [блок]` — свойства «game», категории с источником (game/mod/you), итоговые роли |
+
+Исправления по ручным тестам (2026-10-25): биомы без монстров — по ключам (H2); контур чанков вместо заливки; устойчивый план (D-36, H4); режим Auto (D-37, H8). Core-тестов: 37.
+
+Ограничения M2: утопленники (спавн в воде) пока не анализируются (P-7); рекомендации в режиме подсветки не учитывают досягаемость; чанк-сводка рисуется на высоте игрока.
 
 ### 5.1 Итоги M1 (ядро)
 Классы (`core/src/main/java/adentika/torch/core/`): `Dir`, `GridSnapshot`, `LightSim`, `Scope`, `Connectivity`, `SpawnModel`, `Planner`, `blocks/BlockTraits`, `blocks/Category`, `blocks/Hazard`, `blocks/CategoryResolver`.

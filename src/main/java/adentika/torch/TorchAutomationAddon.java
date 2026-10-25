@@ -1,8 +1,11 @@
 package adentika.torch;
 
+import adentika.torch.commands.TorchBlockCommand;
+import adentika.torch.modules.TorchBlocks;
 import adentika.torch.modules.TorchHighlight;
 import com.mojang.logging.LogUtils;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
+import meteordevelopment.meteorclient.commands.Commands;
 import meteordevelopment.meteorclient.systems.modules.Category;
 import meteordevelopment.meteorclient.systems.modules.Modules;
 import org.slf4j.Logger;
@@ -15,7 +18,10 @@ public class TorchAutomationAddon extends MeteorAddon {
     public void onInitialize() {
         LOG.info("Initializing Torch Automation");
 
+        Modules.get().add(new TorchBlocks());
         Modules.get().add(new TorchHighlight());
+
+        Commands.add(new TorchBlockCommand());
     }
 
     @Override

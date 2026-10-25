@@ -10,9 +10,14 @@ final class Scene {
 
     /** Solid floor at y = 0, air with spawnable/standable feet cells at y = 1, plain air above. */
     static Scene flat(int sizeX, int sizeY, int sizeZ) {
-        Scene s = new Scene(new GridSnapshot(0, 0, 0, sizeX, sizeY, sizeZ));
-        for (int x = 0; x < sizeX; x++) {
-            for (int z = 0; z < sizeZ; z++) {
+        return flatAt(0, 0, sizeX, sizeY, sizeZ);
+    }
+
+    /** Same as {@link #flat} but the snapshot starts at world (originX, 0, originZ). */
+    static Scene flatAt(int originX, int originZ, int sizeX, int sizeY, int sizeZ) {
+        Scene s = new Scene(new GridSnapshot(originX, 0, originZ, sizeX, sizeY, sizeZ));
+        for (int x = originX; x < originX + sizeX; x++) {
+            for (int z = originZ; z < originZ + sizeZ; z++) {
                 s.solid(x, 0, z);
                 for (int y = 1; y < sizeY; y++) s.air(x, y, z);
                 if (sizeY > 1) s.floorCell(x, 1, z);

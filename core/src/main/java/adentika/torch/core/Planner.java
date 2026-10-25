@@ -27,6 +27,11 @@ public final class Planner {
         public double reach = 4.5;
         /** Do not place a torch that covers fewer danger cells than this. */
         public int minGain = 1;
+        /**
+         * Cells of a previous plan to keep when still useful, so recommendations do not jump around when the player
+         * moves and the area is rescanned. Kept first, in order; the rest of the plan is built around them.
+         */
+        public int[] keepCells = new int[0];
     }
 
     /** {@code attachDir}: {@link Dir#DOWN} for a floor torch, otherwise the horizontal direction of the supporting block. */
@@ -64,9 +69,24 @@ public final class Planner {
             if (covered.length >= cfg.minGain) options.add(new Option(cell, attach, covered));
         }
 
+        // Previous plan first: keep every torch that still covers enough uncovered danger cells.
+        List<Option> kept = new ArrayList<>();
+        BitSet keptDone = new BitSet(dangerCells.length);
+        if (cfg.keepCells.length > 0) {
+            java.util.Map<Integer, Option> byCell = new java.util.HashMap<>();
+            for (Option o : options) byCell.put(o.cell, o);
+            for (int cell : cfg.keepCells) {
+                Option o = byCell.get(cell);
+                if (o == null || kept.contains(o) || gain(o, keptDone) < cfg.minGain) continue;
+                kept.add(o);
+                for (int k : o.covered) keptDone.set(k);
+            }
+        }
+
         // Two deterministic heuristics, each followed by redundancy pruning; the plan with fewer torches wins.
-        List<Option> greedy = prune(maxGain(options, dangerCells.length, cfg), dangerCells.length);
-        List<Option> rarest = prune(rarestFirst(options, dangerCells.length, cfg), dangerCells.length);
+        // Kept torches are never pruned: stable recommendations matter more than one torch saved.
+        List<Option> greedy = prune(concat(kept, maxGain(options, keptDone, cfg)), dangerCells.length, kept);
+        List<Option> rarest = prune(concat(kept, rarestFirst(options, dangerCells.length, keptDone, cfg)), dangerCells.length, kept);
         List<Option> chosen = rarest.size() < greedy.size() ? rarest : greedy;
 
         BitSet done = new BitSet(dangerCells.length);
@@ -83,8 +103,14 @@ public final class Planner {
     }
 
     /** Classic lazy greedy: always take the option covering most uncovered cells. */
-    private static List<Option> maxGain(List<Option> options, int dangerCount, Config cfg) {
-        BitSet done = new BitSet(dangerCount);
+    private static List<Option> concat(List<Option> a, List<Option> b) {
+        List<Option> all = new ArrayList<>(a);
+        all.addAll(b);
+        return all;
+    }
+
+    private static List<Option> maxGain(List<Option> options, BitSet alreadyCovered, Config cfg) {
+        BitSet done = (BitSet) alreadyCovered.clone();
         PriorityQueue<Entry> queue = new PriorityQueue<>((a, b) -> compare(a, b, cfg.preferWall));
         for (Option o : options) queue.add(new Entry(o, o.covered.length));
 
@@ -108,7 +134,7 @@ public final class Planner {
      * Rarest-first: take the uncovered cell with the fewest options able to light it, then its best option.
      * Handles borders and corners better than pure max-gain, which tends to leave thin slivers.
      */
-    private static List<Option> rarestFirst(List<Option> options, int dangerCount, Config cfg) {
+    private static List<Option> rarestFirst(List<Option> options, int dangerCount, BitSet alreadyCovered, Config cfg) {
         int[] freq = new int[dangerCount];
         for (Option o : options) for (int k : o.covered) freq[k]++;
         int[][] coverers = new int[dangerCount][];
@@ -120,7 +146,7 @@ public final class Planner {
         for (int k = 0; k < dangerCount; k++) order[k] = k;
         java.util.Arrays.sort(order, (a, b) -> freq[a] != freq[b] ? Integer.compare(freq[a], freq[b]) : Integer.compare(a, b));
 
-        BitSet done = new BitSet(dangerCount);
+        BitSet done = (BitSet) alreadyCovered.clone();
         List<Option> chosen = new ArrayList<>();
         for (int k : order) {
             if (done.get(k) || freq[k] == 0) continue;
@@ -142,11 +168,12 @@ public final class Planner {
     }
 
     /** Drops torches whose cells are all lit by the other chosen torches (smallest coverage checked first). */
-    private static List<Option> prune(List<Option> chosen, int dangerCount) {
+    private static List<Option> prune(List<Option> chosen, int dangerCount, List<Option> keep) {
         int[] count = new int[dangerCount];
         for (Option o : chosen) for (int k : o.covered) count[k]++;
 
         List<Option> bySize = new ArrayList<>(chosen);
+        bySize.removeAll(keep);
         bySize.sort((a, b) -> a.covered.length != b.covered.length ? Integer.compare(a.covered.length, b.covered.length) : Integer.compare(a.cell, b.cell));
         java.util.Set<Option> removed = new java.util.HashSet<>();
         for (Option o : bySize) {
