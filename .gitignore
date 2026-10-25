@@ -1,0 +1,19 @@
+# Game instance of the user (never commit)
+/1.21.1/
+
+# Gradle / Loom
+.gradle/
+build/
+out/
+run/
+*/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+bin/
+
+# OS
+Thumbs.db
+.DS_Store

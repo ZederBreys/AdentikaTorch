@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "torch-automation",
+  "version": "${version}",
+  "name": "Torch Automation",
+  "description": "Meteor Client addon: smart torch placement against darkness-based hostile mob spawns (Overworld).",
+  "authors": [
+    "ZederBreys"
+  ],
+  "license": "GPL-3.0",
+  "icon": "assets/torch-automation/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "meteor": [
+      "adentika.torch.TorchAutomationAddon"
+    ]
+  },
+  "custom": {
+    "meteor-client:color": "255,170,40"
+  },
+  "depends": {
+    "java": ">=21",
+    "minecraft": ["${mc_version}"],
+    "meteor-client": "*"
+  }
+}

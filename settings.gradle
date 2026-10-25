@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'torch-automation'
+
+// Pure Java logic without Minecraft classes (light, spawn model, planner); unit-tested.
+include 'core'
