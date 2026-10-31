@@ -7,6 +7,10 @@
   "authors": [
     "ZederBreys"
   ],
+  "contact": {
+    "sources": "https://github.com/ZederBreys/AdentikaTorch",
+    "issues": "https://github.com/ZederBreys/AdentikaTorch/issues"
+  },
   "license": "GPL-3.0",
   "icon": "assets/torch-automation/icon.png",
   "environment": "client",

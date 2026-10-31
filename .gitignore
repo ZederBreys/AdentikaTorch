@@ -7,13 +7,40 @@ build/
 out/
 run/
 */build/
+remappedSrc/
+.architectury-transformer/
 
 # IDE
 .idea/
 *.iml
+*.ipr
+*.iws
 .vscode/
+.fleet/
+.settings/
+.project
+.classpath
 bin/
 
-# OS
+# Logs and dumps
+*.log
+logs/
+*.hprof
+
+# OS / editors
 Thumbs.db
+desktop.ini
 .DS_Store
+*.swp
+
+# Local tools
+.claude/
+
+# Development-only files (kept locally, not published)
+/CLAUDE.md
+/START_HERE.md
+/docs/FIRST_SESSION_PROMPT.md
+/docs/RESEARCH_CHECKLIST.md
+
+# Original screen recordings (compressed copies are in docs/media/)
+/gtihub-gif/

@@ -70,7 +70,7 @@
 ### Статус этапов
 | Этап | Статус |
 |---|---|
-| M0 | **выполнен 2026-10-25**, кроме ручной проверки в игре (модуль виден в Meteor) — за пользователем. Команда: `$env:JAVA_HOME = "C:\Users\ZederBreys\.jdks\jdk-21.0.12.1+1"; .\gradlew build` → BUILD SUCCESSFUL; `:core:test` — 2 теста, 0 ошибок; JAR содержит аддон + `core`, без классов Meteor/Baritone. Отличие от шаблона: модуль `core` упаковывается в JAR задачей `jar` (`evaluationDependsOn(":core")`). |
+| M0 | **выполнен 2026-10-25**, кроме ручной проверки в игре (модуль виден в Meteor) — за пользователем. Команда: `$env:JAVA_HOME = "%USERPROFILE%\.jdks\jdk-21.0.12.1+1"; .\gradlew build` → BUILD SUCCESSFUL; `:core:test` — 2 теста, 0 ошибок; JAR содержит аддон + `core`, без классов Meteor/Baritone. Отличие от шаблона: модуль `core` упаковывается в JAR задачей `jar` (`evaluationDependsOn(":core")`). |
 | M1 | **выполнен 2026-10-25** (только ядро, без Minecraft). `.\gradlew build` → BUILD SUCCESSFUL; `:core:test` — **36 тестов, 0 ошибок** (LightSim 7, SpawnModel 6, Connectivity 4, Planner 6, CategoryResolver 11, LightLevels 2). Подробности — §5.1 |
 | M2 | **код готов 2026-10-25, ручная проверка в игре не выполнена** — чек-лист `docs/MANUAL_TESTS.md` (H1–H16, U-T1…U-T3, U-5). `.\gradlew build` → BUILD SUCCESSFUL, 37 unit-тестов зелёные. Запуск `.\gradlew runClient` (тестовый клиент, офлайн, без Baritone): аддон загружается («Initializing Torch Automation»), ошибок аддона в логе нет; мир в тестовом клиенте **не открывался**. Подробности — §5.2 |
 | M3 | **код готов 2026-10-25, в игре не проверено** — чек-лист `docs/MANUAL_TESTS.md` A1–A10. `.\gradlew build` → BUILD SUCCESSFUL, 38 unit-тестов зелёные; `runClient`: аддон загружается без ошибок. Подробности — §5.3 |
