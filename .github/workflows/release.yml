@@ -1,0 +1,122 @@
+name: Release
+
+# Publishes a GitHub Release with the mod jar when a tag v* is pushed:
+#   git tag v1.0.0 && git push origin v1.0.0
+# The tag is the version: the jar is built with mod_version = tag without "v".
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      jar: ${{ steps.jar.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version from tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not a version like v1.0.0 or v1.0.0-beta.1"
+            exit 1
+          fi
+          version="${TAG#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          in_repo=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2 | tr -d '\r')
+          if [ "$in_repo" != "$version" ]; then
+            echo "::notice::gradle.properties has mod_version=$in_repo; the release is built as $version (from the tag)."
+          fi
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build and test
+        run: ./gradlew build -Pmod_version=${{ steps.version.outputs.version }}
+
+      # Loom puts the remapped production jar into build/libs (the -dev jar goes to build/devlibs).
+      - name: Find and check the mod jar
+        id: jar
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          base=$(grep -E '^archives_base_name=' gradle.properties | cut -d= -f2 | tr -d '\r')
+          jar="build/libs/${base}-${VERSION}.jar"
+          test -f "$jar" || { echo "::error::$jar not found"; ls -la build/libs; exit 1; }
+          unzip -p "$jar" fabric.mod.json | grep -q "\"version\": \"${VERSION}\"" \
+            || { echo "::error::fabric.mod.json in $jar does not have version $VERSION"; exit 1; }
+          unzip -l "$jar" | grep -q 'adentika/torch/core/Planner.class' \
+            || { echo "::error::core classes are missing from $jar"; exit 1; }
+          mkdir -p dist
+          cp "$jar" dist/
+          echo "name=$(basename "$jar")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-jar
+          path: dist/*.jar
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-jar
+          path: dist
+
+      - name: Release notes
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)
+          {
+            echo "## Changes"
+            echo
+            if [ -n "$prev" ]; then
+              git log --no-merges --format='- %s (%h)' "${prev}..${TAG}"
+              echo
+              echo "**Full changelog:** https://github.com/${REPO}/compare/${prev}...${TAG}"
+            else
+              git log --no-merges --format='- %s (%h)' "${TAG}"
+            fi
+            echo
+            echo "## Install"
+            echo
+            echo "Minecraft 1.21.1 + Fabric Loader + Meteor Client 0.5.8 (+ Baritone for torch-around / torch-pass)."
+            echo "Put \`${{ needs.build.outputs.jar }}\` into your \`mods\` folder."
+          } > notes.md
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          flags=()
+          [[ "$VERSION" == *-* ]] && flags+=(--prerelease)
+          gh release create "$TAG" "dist/${{ needs.build.outputs.jar }}" \
+            --title "Torch Automation $VERSION" --notes-file notes.md --verify-tag "${flags[@]}"
